@@ -1,0 +1,103 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+source("SVDFunctions.R")
+```
+
+### LOG2FOLD CHANGE ANALYSIS (normalized to Day 14)
+```{r}
+# 2. Create the isc
+log2fc_crosscor <- feature_feature_correlation_log2fc$estimate
+
+log2fc_isc1 <- iterativeSpectralCleaning(log2fc_crosscor, thresh = 0.5)
+#for(i in 1:length(isc1)){
+
+# Consider PC1 (to begin with)
+  log2fc_left <- log2fc_isc1[[1]]$LeftFeatures
+  log2fc_right <- log2fc_isc1[[1]]$RightFeatures
+  
+  # Write projection values
+  write.csv(log2fc_left,"log2fc_ccsvd_all_somamer_projections.csv")
+  
+  # Calculate top and bottom tailed features (x% normal distribution tails)
+  log2fc_l_svd_pc1_somamer<- pnorm(log2fc_left, mean = mean(log2fc_left), sd = sd(log2fc_left))
+  
+  log2fc_top20_somamers <- which(log2fc_l_svd_pc1_somamer<0.20 | log2fc_l_svd_pc1_somamer>0.80)
+  log2fc_top15_somamers <- which(log2fc_l_svd_pc1_somamer<0.15 | log2fc_l_svd_pc1_somamer>0.85)
+  log2fc_top10_somamers <- which(log2fc_l_svd_pc1_somamer<0.1 | log2fc_l_svd_pc1_somamer>0.9)
+  
+  write.csv(names(log2fc_left), "List_of_top_somamers_from_CCSVD/log2fc_allSOMAmers.csv")
+  write.csv(names(log2fc_top20_somamers),"List_of_top_somamers_from_CCSVD/log2fc_top20_somamers.csv",row.names = FALSE)
+  write.csv(names(log2fc_top15_somamers),"List_of_top_somamers_from_CCSVD/log2fc_top15_somamers.csv",row.names = FALSE)
+  write.csv(names(log2fc_top10_somamers),"List_of_top_somamers_from_CCSVD/log2fc_top10_somamers.csv",row.names = FALSE)
+
+  # Resume making correlation heatmap with selected datasets (all discriminatory CAZymes with different SOMA datasets)
+  # CAZyme dataframe
+  log2fc_discCAZymes <- names(log2fc_right)
+  
+  # ALL
+  log2fc_allSomamers <- c(names(log2fc_left))
+  log2fc_allcors <- log2fc_crosscor[log2fc_allSomamers, log2fc_discCAZymes]
+  rownames(log2fc_allcors) <- paste(smDuo$EntrezGeneSymbol[match(rownames(log2fc_allcors), rownames(smDuo))], ' (',
+                             smDuo$TargetFullName[match(rownames(log2fc_allcors), rownames(smDuo))], ')', sep = '')
+  
+  # top 20 on each side
+  log2fc_top20Somamers <- c(names(log2fc_top20_somamers))
+  log2fc_top20cors <- log2fc_crosscor[log2fc_top20Somamers, log2fc_discCAZymes]
+  rownames(log2fc_top20cors) <- paste(smDuo$EntrezGeneSymbol[match(rownames(log2fc_top20cors), rownames(smDuo))], ' (',
+                             smDuo$TargetFullName[match(rownames(log2fc_top20cors), rownames(smDuo))], ')', sep = '')
+  
+  # top 15 on each side
+  log2fc_top15Somamers <- c(names(log2fc_top15_somamers))
+  log2fc_top15cors <- log2fc_crosscor[log2fc_top15Somamers, log2fc_discCAZymes]
+  rownames(log2fc_top15cors) <- paste(smDuo$EntrezGeneSymbol[match(rownames(log2fc_top15cors), rownames(smDuo))], ' (',
+                             smDuo$TargetFullName[match(rownames(log2fc_top15cors), rownames(smDuo))], ')', sep = '')
+  
+  # top 10 on each side
+  log2fc_top10Somamers <- c(names(log2fc_top10_somamers))
+  log2fc_top10cors <- log2fc_crosscor[log2fc_top10Somamers, log2fc_discCAZymes]
+  rownames(log2fc_top10cors) <- paste(smDuo$EntrezGeneSymbol[match(rownames(log2fc_top10cors), rownames(smDuo))], ' (',
+                             smDuo$TargetFullName[match(rownames(log2fc_top10cors), rownames(smDuo))], ')', sep = '')
+  
+ 
+  ## Set colours
+  col2 <- colorRampPalette(c("#67001F", "#B2182B", "#D6604D", "#F4A582",
+                             "#FDDBC7", "#FFFFFF", "#D1E5F0", "#92C5DE",
+                             "#4393C3", "#2166AC", "#053061"))
+  col <- col2(14)
+  col <- rev(col)
+  
+  # Make heatmaps / PDFs
+  
+  # ALL
+    pdf(paste('191227_CCSVD_Spearman_ALLsubjects_Discriminatory_ALL_SOMA_vs_allCAZyme_log2fc_normalized_to_day14_PC', 1, '.pdf', sep = '_'),  width = 11, height = 6)
+  corrplot(t(log2fc_allcors), method = 'circle', is.corr = FALSE, tl.srt = 75, col = col, cl.lim = c(-1, 1), tl.cex = 0.1)
+  dev.off()
+  
+  # top 20 on each side
+    pdf(paste('191227_CCSVD_Spearman_ALLsubjects_Discriminatory_top20_SOMA_vs_allCAZyme_log2fc_normalized_to_day14_PC', 1, '.pdf', sep = '_'),  width = 11, height = 6)
+  corrplot(t(log2fc_top20cors), method = 'circle', is.corr = FALSE, tl.srt = 75, col = col, cl.lim = c(-1, 1), tl.cex = 0.2)
+  dev.off()
+  
+  # top 15 on each side
+    pdf(paste('191227_CCSVD_Spearman_ALLsubjects_Discriminatory_top15_SOMA_vs_allCAZyme_log2fc_normalized_to_day14_PC', 1, '.pdf', sep = '_'),  width = 11, height = 6)
+  corrplot(t(log2fc_top15cors), method = 'circle', is.corr = FALSE, tl.srt = 75, col = col, cl.lim = c(-1, 1), tl.cex = 0.2)
+  dev.off()
+  
+  # top 10 on each side
+    pdf(paste('191227_CCSVD_Spearman_ALLsubjects_Discriminatory_top10_SOMA_vs_allCAZyme_log2fc_normalized_to_day14_PC_', 1, '.pdf', sep = '_'),  width = 11, height = 6)
+    corrplot(t(log2fc_top10cors), method = 'circle', is.corr = FALSE, tl.srt = 90, tl.col = "black" ,col = col, cl.lim = c(-1, 1), tl.cex = 0.2)
+  dev.off()
+    
+
+```
+
+
+```{r}
+save.image("HS1_PeaFiber.RData")
+
+```
