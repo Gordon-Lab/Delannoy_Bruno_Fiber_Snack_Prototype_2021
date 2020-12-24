@@ -1,0 +1,153 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+# Set working directory
+setwd("~/Box/HumanStudy1_ControlledFeedingStudy_PeaFiberSnacks/01_HumanStudy_all_datasets/CCSVD/")
+
+```
+
+```{r}
+## Function to calculate correlations
+calccorr <-  function(x, y, method){
+  cts<-apply(x, MARGIN=2, function(i){ apply(y, MARGIN=2, function(j){
+    #cor.test(i,j,method=method,use="pairwise.complete.obs")
+    cor.test(i,j,method=method)
+  }) })
+  r<-as.data.frame(lapply(cts, function(i){ unlist(lapply(i, function(j){ j$estimate })) }))
+  p<-as.data.frame(lapply(cts, function(i){ unlist(lapply(i, function(j){ j$p.value })) }))
+  rownames(r)<-colnames(y)
+  out<-list(estimate=r, p.value=p)
+  return(out)
+}
+```
+
+
+```{r}
+
+# Read in file with SOMAmer information (soma map)
+
+smDuo <- read.csv("SOMA_info_QC_filtered.csv")
+rownames(smDuo) <- smDuo$SomaID
+
+```
+
+
+```{r}
+
+# PRE PRE PROCESSING - PICK ONLY DISCRIMINATING FEATURES
+ALLCAZymes_allTP = read.csv("CAZyme_TPM_HumanStudy_3.csv")
+ALLCAZymes = ALLCAZymes_allTP[ALLCAZymes_allTP$Study.Group %in% c("Day.1.Free.Diet","Day.14.HiSF.LoFV.diet","Day.21.Fiber.snack.3","Day.29.Fiber.snack.3","Day.35.Fiber.snack.3","Day.49.HiSF.LoFV.diet"),]
+#logALLCAZymes <- log2((ALLCAZymes[,5:369]+0.5))
+#logALLCAZymes <- data.frame(cbind(ALLCAZymes[,1:4],logALLCAZymes))
+
+#For log2FC ONLY
+AllCazymes_day14 = ALLCAZymes[c(grep("14",ALLCAZymes$Studyday)),5:369]
+AllCazymes_day21 = ALLCAZymes[c(grep("21",ALLCAZymes$Studyday)),5:369]
+AllCazymes_day29 = ALLCAZymes[c(grep("29",ALLCAZymes$Studyday)),5:369]
+AllCazymes_day35 = ALLCAZymes[c(grep("35",ALLCAZymes$Studyday)),5:369]
+AllCazymes_day49 = ALLCAZymes[c(grep("49",ALLCAZymes$Studyday)),5:369]
+
+LOG2FC_ALLCAZYMES_day21 = log2((AllCazymes_day21+0.5)/(AllCazymes_day14+0.5))
+LOG2FC_ALLCAZYMES_day29 = log2((AllCazymes_day29+0.5)/(AllCazymes_day14+0.5))
+LOG2FC_ALLCAZYMES_day35 = log2((AllCazymes_day35+0.5)/(AllCazymes_day14+0.5))
+LOG2FC_ALLCAZYMES_day49 = log2((AllCazymes_day49+0.5)/(AllCazymes_day14+0.5))
+
+LOG2FC_ALLCAZYMES = data.frame(rbind(LOG2FC_ALLCAZYMES_day21,LOG2FC_ALLCAZYMES_day29,LOG2FC_ALLCAZYMES_day35,LOG2FC_ALLCAZYMES_day49))
+LOG2FC_ALLCAZYMES = data.frame(cbind(ALLCAZymes[25:72,1:4],LOG2FC_ALLCAZYMES))
+
+sigCAZymes_TC4 = c("SubjectID", "Studyday","Study.Group","CBM77",
+"GH43_37",
+"GH5_21",
+"CBM2",
+"GH43_2",
+"PL15",
+"PL1",
+"GH43_29",
+"GH43_7",
+"GT76",
+"PL6",
+"PL11",
+"GH43_5",
+"PL9",
+"CBM27",
+"GH5_8",
+"GH43_1",
+"GH26",
+"GH5_5",
+"GH5_4",
+"GH67",
+"CBM72",
+"CBM23",
+"CBM37",
+"CBM61",
+"GH115",
+"GH10",
+"GH43_19",
+"PL13",
+"CBM6",
+"GH4",
+"CBM69",
+"GH1",
+"GT56",
+"GH5_36",
+"CBM16",
+"CBM83",
+"GH136",
+"CBM25",
+"GH13_29",
+"GH13_21",
+"GH164",
+"GH104",
+"GH161",
+"GH37",
+"GH13_27",
+"CBM54",
+"CBM82",
+"CBM41",
+"GH16_6",
+"CBM40",
+"CBM12",
+"GH101")
+
+# for lg2fc
+filtered_CAZymes_log2FC = LOG2FC_ALLCAZYMES[sigCAZymes_TC4]
+```
+
+
+```{r}
+ALLSOMA = read.csv("../SOMAscan_data/Somascan_Log2RFU_plateScale_medNorm_calibrate_HumanStudy_3_QCfiltered1208somamers.csv")
+
+#  For lg2fc ONLY
+AllSOMA_day14 = ALLSOMA[c(grep("14",ALLSOMA$Study_Day)),14:1217]
+AllSOMA_day21 = ALLSOMA[c(grep("21",ALLSOMA$Study_Day)),14:1217]
+AllSOMA_day29 = ALLSOMA[c(grep("29",ALLSOMA$Study_Day)),14:1217]
+AllSOMA_day35 = ALLSOMA[c(grep("35",ALLSOMA$Study_Day)),14:1217]
+AllSOMA_day49 = ALLSOMA[c(grep("49",ALLSOMA$Study_Day)),14:1217]
+
+LOG2FC_ALLSOMA_day21 = AllSOMA_day21 - AllSOMA_day14
+LOG2FC_ALLSOMA_day29 = AllSOMA_day29 - AllSOMA_day14
+LOG2FC_ALLSOMA_day35 = AllSOMA_day35 - AllSOMA_day14
+LOG2FC_ALLSOMA_day49 = AllSOMA_day49 - AllSOMA_day14
+
+LOG2FC_ALLSOMA = data.frame(rbind(LOG2FC_ALLSOMA_day21,LOG2FC_ALLSOMA_day29,LOG2FC_ALLSOMA_day35,LOG2FC_ALLSOMA_day49))
+LOG2FC_ALLSOMA = data.frame(cbind(ALLSOMA[25:72,1:13],LOG2FC_ALLSOMA))
+```
+
+
+```{r}
+
+#lg2fc
+feature_feature_correlation_log2fc <- calccorr(filtered_CAZymes_log2FC[,4:56],LOG2FC_ALLSOMA[,14:1217],"spearman")
+feature_feature_correlation_coeff_lg2fc <- feature_feature_correlation_log2fc$estimate
+feature_feature_correlation_pval_lg2fc <- feature_feature_correlation_log2fc$p.value
+
+#save correlation table with estimate and pvalues
+write.csv(feature_feature_correlation_coeff_lg2fc,"feature_feature_correlation_coeff_lg2fc.csv")
+write.csv(feature_feature_correlation_pval_lg2fc,"feature_feature_correlation_pval_lg2fc.csv")
+
+
+```
